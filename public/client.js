@@ -57,60 +57,14 @@ socket.on('connect', async () => {
   const params = { track };
   const producer = await producerTransport.produce(params)
 
-
-   /*
-  producerTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
-    socket.request('connectProducerTransport', { dtlsParameters })
-      .then(callback)
-      .catch(errback);
-  });
-
-  producerTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
-    try {
-      const { id } = await socket.request('produce', {
-        transportId: transport.id,
-        kind,
-        rtpParameters,
-      });
-      callback({ id });
-    } catch (err) {
-      errback(err);
-    }
-  });
-
-  producerTransport.on('connectionstatechange', (state) => {
-    switch (state) {
-      case 'connecting':
-        console.log("Producer connecting")
-      break;
-      case 'connected':
-        document.getElementById('local-video').srcObject = stream
-        console.log("Producer connected")
-      break;
-      case 'failed':
-        transport.close();
-      break;
-      default: break;
-    }
-  });
-
-  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-  const track = stream.getVideoTracks()[0];
-  const params = { track };
-  const producer = await producerTransport.produce(params)
-
-
-
-  // Consumer
   const consumerData = await socket.request('createConsumerTransport', {
     forceTcp: false,
   });
-  
-
   const consumerTransport = device.createRecvTransport(consumerData);
+
   consumerTransport.on('connect', ({ dtlsParameters }, callback, errback) => {
     socket.request('connectConsumerTransport', {
-      transportId: transport.id,
+      id: consumerTransport.id,
       dtlsParameters
     })
       .then(callback)
@@ -125,12 +79,9 @@ socket.on('connect', async () => {
 
       case 'connected':
         console.log("Consumer transport connected")
-        console.log("Consumer Stream", consumerStream)
         if (consumerStream) {
           document.getElementById('remote-video').srcObject = consumerStream
-
         }
-        
         break;
 
       case 'failed':
@@ -141,17 +92,22 @@ socket.on('connect', async () => {
     }
   });
 
-  console.log("Producer id", producer.id)
+  //const consumerStream = await consume(consumerTransport, device, producer);
   let consumerStream = null;
-  socket.on('peer.produce', async () => {
-    consumerStream = await consume(consumerTransport, device, producer);
+  socket.on('peer.produce', async (producer_id) => {
+    const consumerStream = await consume(consumerTransport, device, producer_id);
+    console.log("Consumer Stream", consumerStream)
+    const track = consumerStream.getVideoTracks()[0];
+    console.log("Tracks", track)
+    document.getElementById('remote-video').srcObject = consumerStream
   })
 
-});
+}
+)
 
-async function consume(transport, device, producer) {
+async function consume(transport, device, producer_id) {
   const { rtpCapabilities } = device;
-  const data = await socket.request('consume', { rtpCapabilities });
+  const data = await socket.request('consume', { producer_id, consumer_transport_id: transport.id, rtpCapabilities });
   const {
     producerId,
     id,
@@ -159,10 +115,6 @@ async function consume(transport, device, producer) {
     rtpParameters,
   } = data;
 
-  if (producer.id === producerId) {
-    console.log("The same")
-    return null
-  }
 
   let codecOptions = {};
   const consumer = await transport.consume({
@@ -175,7 +127,5 @@ async function consume(transport, device, producer) {
   const stream = new MediaStream();
   stream.addTrack(consumer.track);
   return stream;
-  */
 }
-)
 

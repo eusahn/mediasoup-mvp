@@ -57,8 +57,10 @@ io.on('connection', socket => {
   peers[peer_id] = new Peer(peer_id, 'ugly') 
   const peer = peers[peer_id]
 
+
   socket.on('disconnect', () => {
     console.log("Disconnected")
+    peer.close()
   })
 
   socket.on('getRouterRtpCapabilities', (data, callback) => {
@@ -83,7 +85,24 @@ io.on('connection', socket => {
 
     
     // inform clients about new producer
-    socket.broadcast.emit('peer.produce');
+    socket.broadcast.emit('peer.produce', producer.id);
+  });
+
+  socket.on('createConsumerTransport', async (data, callback) => {
+    const { transport, params } = await createWebRtcTransport();
+    peer.addTransport(transport)
+    callback(params);
+  });
+
+  socket.on('connectConsumerTransport', async ({ id, dtlsParameters }, callback) => {
+    await peer.connectTransport(id, dtlsParameters)
+    callback();
+  });
+
+  socket.on('consume', async (data, callback) => {
+    const { producer_id, consumer_transport_id, rtpCapabilities } = data;
+    const consumer = await peer.createConsumer(consumer_transport_id, producer_id,  rtpCapabilities)
+    callback(consumer.params);
   });
 
     /*

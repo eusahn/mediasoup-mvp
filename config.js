@@ -3,8 +3,8 @@ const os = require('os')
 module.exports = {
     listenIp: '0.0.0.0',
     listenPort: 3016,
-    sslCrt: '/ssl/cert.pem',
-    sslKey: '/ssl/key.pem',
+    sslCrt: '/ssl/server.crt',
+    sslKey: '/ssl/server.key',
     
     mediasoup: {
       // Worker settings
