@@ -1,6 +1,7 @@
 const os = require('os')
 
 module.exports = {
+    domain : process.env.DOMAIN || 'localhost',
     listenIp: '0.0.0.0',
     listenPort: 3016,
     sslCrt: '/ssl/server.crt',
@@ -51,10 +52,9 @@ module.exports = {
     // WebRtcTransport settings
     webRtcTransport: {
         listenIps: [
-          {
-            ip: '0.0.0.0',      
-            announcedIp:'127.0.0.1' // replace by public IP address
-          }
+
+          "127.0.0.1"
+          
         ],
         maxIncomingBitrate: 1500000,
         initialAvailableOutgoingBitrate: 1000000

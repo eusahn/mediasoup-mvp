@@ -19,7 +19,11 @@ const options = {
 }
 
 const httpsServer = https.createServer(options, app)
-const io = require('socket.io')(httpsServer)
+const io = require('socket.io')(httpsServer, {
+  cors: {
+    origin: '*',
+  }  
+})
 
 app.use(express.static(path.join(__dirname, 'public')))
 
