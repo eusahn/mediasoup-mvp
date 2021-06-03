@@ -2,5 +2,5 @@ version: '3.3'
 
 services:
   web: 
-    network-mode: 'host'
+    network_mode: 'host'
 
