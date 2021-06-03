@@ -11,7 +11,7 @@ services:
       - NODE_ENV=development
     ports:
       - "3016:3016"
-      - "10000-10010:10000-10100"
+      - "10000-10010:10000-10010"
     networks:
       - back-tier
 
