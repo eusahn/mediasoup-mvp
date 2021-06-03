@@ -1,0 +1,10 @@
+   
+version: '3.3'
+
+services:
+  web: 
+    ports:
+      - "3016:3016"
+      - "10000-10010:10000-10010"
+    networks:
+        - back-tier
