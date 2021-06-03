@@ -10,8 +10,10 @@ services:
     environment:
       - NODE_ENV=development
     ports:
-      - 3016:3016
-    network_mode: "host"
+      - "3016:3016"
+      - "10000-10100:10000-10100"
+    networks:
+      - back-tier
 
 
   nginx:
@@ -19,9 +21,10 @@ services:
         - back-tier
     image: nginx
     volumes:
-        - ./src:/src
-        - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
-  
+      - ./src:/src
+      - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "80:80"
     
 
 networks:
