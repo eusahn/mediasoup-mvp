@@ -1,4 +1,5 @@
 const socket = io();
+const videos = {}
 const mediasoup = window.mediasoupClient;
 const socketPromise = function(socket) {
   return function request(type, data = {}) {
@@ -10,6 +11,8 @@ const socketPromise = function(socket) {
 socket.request = socketPromise(socket)
 
 socket.on('connect', async () => {
+
+
 
   const data = await socket.request('getRouterRtpCapabilities');
   const device = new mediasoup.Device();
@@ -28,6 +31,7 @@ socket.on('connect', async () => {
   });
 
   producerTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
+    console.log("Produce")
       const { id } = await socket.request('produce', {
         id: producerTransport.id,
         kind,
@@ -55,7 +59,16 @@ socket.on('connect', async () => {
   const stream = await navigator.mediaDevices.getUserMedia({ video: true });
   const track = stream.getVideoTracks()[0];
   const params = { track };
-  const producer = await producerTransport.produce(params)
+  const videoProducer = await producerTransport.produce(params)
+
+  const audioStream = await navigator.mediaDevices.getUserMedia({ audio: {
+    echoCancellation: true
+  } });
+  const audioTrack = audioStream.getAudioTracks()[0];
+  const audioParams = { track: audioTrack };
+  const audioProducer = await producerTransport.produce(audioParams)
+  
+
 
   const consumerData = await socket.request('createConsumerTransport', {
     forceTcp: false,
@@ -79,9 +92,6 @@ socket.on('connect', async () => {
 
       case 'connected':
         console.log("Consumer transport connected")
-        if (consumerStream) {
-          document.getElementById('remote-video').srcObject = consumerStream
-        }
         break;
 
       case 'failed':
@@ -94,13 +104,60 @@ socket.on('connect', async () => {
 
   //const consumerStream = await consume(consumerTransport, device, producer);
   let consumerStream = null;
-  socket.on('peer.produce', async (producer_id) => {
+  socket.on('peer.produce', async ({ producer_id, peer_id }) => {
+
     const consumerStream = await consume(consumerTransport, device, producer_id);
-    console.log("Consumer Stream", consumerStream)
-    const track = consumerStream.getVideoTracks()[0];
-    console.log("Tracks", track)
-    document.getElementById('remote-video').srcObject = consumerStream
+    if (!videos[peer_id]) {
+      const video = document.createElement('video')
+      //video.muted = true;
+      video.setAttribute('playsinline', true)
+      video.setAttribute('autoplay', true)
+      video.srcObject = consumerStream;
+      videos[peer_id] = video
+      document.querySelector(".video-container").appendChild(video)
+    } else {
+      const videoTrack = videos[peer_id].srcObject
+      consumerStream.getTracks().forEach(track => videoTrack.addTrack(track));
+    }
   })
+
+  socket.on('peer.destroy', (peer_id) => {
+    videos[peer_id] && videos[peer_id].remove()
+    delete videos[peer_id]
+  })
+
+  const existingPeers = await socket.request('peers.existing')
+  for (var i = 0; i < existingPeers.length; i++) {
+    const peer_id = existingPeers[i].id
+    const producer_ids = await socket.request('peer.get.producers', peer_id)
+    for (var k = 0; k < producer_ids.length; k++) {
+      const consumerStream = await consume(consumerTransport, device, producer_ids[k]);
+      if (!videos[peer_id]) {
+        const video = document.createElement('video')
+        //video.muted = true;
+        video.setAttribute('playsinline', true)
+        video.setAttribute('autoplay', true)
+        video.srcObject = consumerStream;
+        videos[peer_id] = video
+        document.querySelector(".video-container").appendChild(video)
+      } else {
+        const videoTrack = videos[peer_id].srcObject
+        consumerStream.getTracks().forEach(track => videoTrack.addTrack(track));
+      }
+    }
+    /*
+    const consumerStream = await consume(consumerTransport, device, producer_id);
+    const video = document.createElement('video')
+    video.muted = true;
+    video.setAttribute('playsinline', true)
+    video.setAttribute('autoplay', true)
+    video.srcObject = consumerStream;
+    videos[existingPeers[i].id] = video
+    document.querySelector(".video-container").appendChild(video)
+    */
+    
+  }
+
 
 }
 )
@@ -128,4 +185,6 @@ async function consume(transport, device, producer_id) {
   stream.addTrack(consumer.track);
   return stream;
 }
+
+
 

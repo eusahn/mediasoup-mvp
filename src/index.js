@@ -54,17 +54,37 @@ createWorker()
 
 
 
-const peers = {};
+let peers = [];
 
 io.on('connection', socket => {
   const peer_id = socket.id
-  peers[peer_id] = new Peer(peer_id, 'ugly') 
-  const peer = peers[peer_id]
+  peers.push(new Peer(peer_id, 'ugly')) 
+  const peer = peers.find(p => p.id === peer_id)
+  const otherPeers = peers.filter(p => p.id !== peer_id)
 
+  socket.on('peers.existing', (data, callback) => {
+    callback(otherPeers)
+  })
+
+  socket.on('peer.get.producer_id', (peer_id, callback) => {
+    const selectedPeer = peers.find(p => p.id === peer_id)
+    if (selectedPeer) {
+      callback(selectedPeer.producers.values().next().value.id)
+    }
+  })
+
+  socket.on('peer.get.producers', (peer_id, callback) => {
+    const selectedPeer = peers.find(p => p.id === peer_id)
+    if (selectedPeer) {
+      const producers = Array.from( selectedPeer.producers.values() );
+      callback(producers.map(p => p.id))
+    }
+  })
 
   socket.on('disconnect', () => {
-    console.log("Disconnected")
     peer.close()
+    peers = peers.filter(p => p.id !== peer_id)
+    socket.broadcast.emit('peer.destroy', peer_id)
   })
 
   socket.on('getRouterRtpCapabilities', (data, callback) => {
@@ -89,7 +109,7 @@ io.on('connection', socket => {
 
     
     // inform clients about new producer
-    socket.broadcast.emit('peer.produce', producer.id);
+    socket.broadcast.emit('peer.produce', { producer_id: producer.id, peer_id: peer_id});
   });
 
   socket.on('createConsumerTransport', async (data, callback) => {
